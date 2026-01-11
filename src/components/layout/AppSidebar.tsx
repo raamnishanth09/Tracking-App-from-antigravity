@@ -1,9 +1,9 @@
-import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
-  BookOpen, 
-  MessageSquare, 
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  BookOpen,
+  MessageSquare,
   Calendar,
   Settings,
   LogOut,
@@ -40,17 +40,20 @@ const AppSidebar = ({ activeView, onViewChange }: AppSidebarProps) => {
 
   const adminMenuItems = [
     { id: "dashboard", title: "Dashboard", icon: LayoutDashboard },
+    { id: "analytics", title: "Analytics", icon: FileText },
     { id: "team-members", title: "Team Members", icon: Users },
-    { id: "team-details", title: "Team Details", icon: FileText },
-    { id: "add-member", title: "Add Member", icon: UserPlus },
-    { id: "approvals", title: "Approvals", icon: CheckSquare },
+    { id: "projects", title: "Projects", icon: Settings },
+    { id: "tasks", title: "Tasks", icon: CheckSquare },
+    { id: "approvals", title: "Approvals", icon: Clock },
     { id: "calendar", title: "Calendar", icon: Calendar },
     { id: "chat", title: "Chat", icon: MessageSquare },
   ];
 
   const teamMenuItems = [
     { id: "dashboard", title: "Dashboard", icon: LayoutDashboard },
-    { id: "work-update", title: "Work Update", icon: Clock },
+    { id: "attendance", title: "Attendance", icon: Clock },
+    { id: "work-update", title: "Work Update", icon: FileText },
+    { id: "leave-request", title: "Leave Request", icon: Calendar },
     { id: "learning", title: "Learning", icon: BookOpen },
     { id: "chat", title: "Chat", icon: MessageSquare },
     { id: "calendar", title: "Calendar", icon: Calendar },
@@ -92,11 +95,10 @@ const AppSidebar = ({ activeView, onViewChange }: AppSidebarProps) => {
                     onClick={() => onViewChange(item.id)}
                     isActive={activeView === item.id}
                     tooltip={item.title}
-                    className={`transition-all duration-200 ${
-                      activeView === item.id
+                    className={`transition-all duration-200 ${activeView === item.id
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
                         : "hover:bg-muted"
-                    }`}
+                      }`}
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.title}</span>

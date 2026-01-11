@@ -7,12 +7,17 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import TeamMembers from "@/components/admin/TeamMembers";
 import TeamDetails from "@/components/admin/TeamDetails";
 import AddMember from "@/components/admin/AddMember";
-import Approvals from "@/components/admin/Approvals";
 import CalendarView from "@/components/CalendarView";
 import TeamDashboard from "@/components/team/TeamDashboard";
 import WorkUpdateForm from "@/components/team/WorkUpdateForm";
 import LearningForm from "@/components/team/LearningForm";
 import TeamChatPanel from "@/components/team/TeamChatPanel";
+import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
+import LeaveApprovals from "@/components/admin/LeaveApprovals";
+import ProjectManagement from "@/components/admin/ProjectManagement";
+import TaskManagement from "@/components/admin/TaskManagement";
+import AttendanceTracker from "@/components/attendance/AttendanceTracker";
+import LeaveRequestForm from "@/components/leave/LeaveRequestForm";
 
 const MainApp = () => {
   const { user, userRole, isLoading } = useAuth();
@@ -34,10 +39,13 @@ const MainApp = () => {
     if (userRole === "admin") {
       switch (activeView) {
         case "dashboard": return <AdminDashboard />;
+        case "analytics": return <AnalyticsDashboard />;
         case "team-members": return <TeamMembers />;
         case "team-details": return <TeamDetails />;
         case "add-member": return <AddMember />;
-        case "approvals": return <Approvals />;
+        case "projects": return <ProjectManagement />;
+        case "tasks": return <TaskManagement />;
+        case "approvals": return <LeaveApprovals />;
         case "calendar": return <CalendarView />;
         case "chat": return <TeamChatPanel />;
         default: return <AdminDashboard />;
@@ -45,7 +53,9 @@ const MainApp = () => {
     } else {
       switch (activeView) {
         case "dashboard": return <TeamDashboard />;
+        case "attendance": return <AttendanceTracker />;
         case "work-update": return <WorkUpdateForm />;
+        case "leave-request": return <LeaveRequestForm />;
         case "learning": return <LearningForm />;
         case "chat": return <TeamChatPanel />;
         case "calendar": return <CalendarView />;
