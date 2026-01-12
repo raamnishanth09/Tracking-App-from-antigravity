@@ -77,11 +77,11 @@ const AttendanceTracker = () => {
       const start = new Date(activeSession.check_in_time).getTime();
       const now = Date.now();
       const diff = now - start;
-      
+
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-      
+
       setElapsedTime(
         `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
       );
@@ -90,16 +90,19 @@ const AttendanceTracker = () => {
     return () => clearInterval(interval);
   }, [isCheckedIn, activeSession]);
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const startCamera = useCallback(async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "user" } 
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" }
       });
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (error) {
+      console.error("Camera access error:", error);
       toast.error("Failed to access camera. Please allow camera permissions.");
       setShowCamera(false);
     }
@@ -134,12 +137,18 @@ const AttendanceTracker = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+
+      // Set a smaller resolution for the capture to avoid AbortErrors from large payloads
+      const maxWidth = 400;
+      const scale = maxWidth / video.videoWidth;
+      canvas.width = maxWidth;
+      canvas.height = video.videoHeight * scale;
+
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL("image/jpeg", 0.8);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Use lower quality (0.4) to significantly reduce the base64 string size
+        const imageData = canvas.toDataURL("image/jpeg", 0.4);
         setCapturedImage(imageData);
       }
     }
@@ -150,7 +159,10 @@ const AttendanceTracker = () => {
   };
 
   const confirmPhoto = async () => {
-    if (!user?.id || !capturedImage) return;
+    if (!user?.id || !capturedImage || isSaving) return;
+
+    setIsSaving(true);
+    const saveToast = toast.loading(captureType === "check_in" ? "Checking in..." : "Checking out...");
 
     try {
       if (captureType === "check_in") {
@@ -162,9 +174,12 @@ const AttendanceTracker = () => {
         });
 
         if (error) throw error;
-        toast.success("Checked in successfully!");
+        toast.success("Checked in successfully!", { id: saveToast });
       } else {
-        if (!activeSession) return;
+        if (!activeSession) {
+          toast.error("No active session found", { id: saveToast });
+          return;
+        }
 
         const checkInTime = new Date(activeSession.check_in_time).getTime();
         const now = Date.now();
@@ -180,16 +195,23 @@ const AttendanceTracker = () => {
           .eq("id", activeSession.id);
 
         if (error) throw error;
-        toast.success("Checked out successfully!");
+        toast.success("Checked out successfully!", { id: saveToast });
       }
 
       setShowCamera(false);
       setCapturedImage(null);
-      refetch();
-      queryClient.invalidateQueries({ queryKey: ["today-attendance"] });
-    } catch (error) {
-      toast.error("Failed to save attendance");
-      console.error(error);
+      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ["today-attendance"] });
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn("Attendance request was aborted. This might be due to a network change or component unmounting.");
+        toast.error("Connection interrupted. Please try again.", { id: saveToast });
+      } else {
+        toast.error(`Error: ${error.message || "Failed to save attendance"}`, { id: saveToast });
+        console.error("Attendance save error:", error);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -225,8 +247,8 @@ const AttendanceTracker = () => {
               <Button
                 onClick={() => openCamera(isCheckedIn ? "check_out" : "check_in")}
                 size="lg"
-                className={isCheckedIn 
-                  ? "bg-destructive hover:bg-destructive/90" 
+                className={isCheckedIn
+                  ? "bg-destructive hover:bg-destructive/90"
                   : "bg-green-600 hover:bg-green-700"
                 }
               >
@@ -259,9 +281,8 @@ const AttendanceTracker = () => {
                   className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      session.check_out_time ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${session.check_out_time ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                      }`}>
                       {session.check_out_time ? <Check className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </div>
                     <div>
@@ -337,9 +358,13 @@ const AttendanceTracker = () => {
                   <Button variant="outline" onClick={retakePhoto} className="flex-1">
                     Retake
                   </Button>
-                  <Button onClick={confirmPhoto} className="flex-1 bg-green-600 hover:bg-green-700">
+                  <Button
+                    onClick={confirmPhoto}
+                    disabled={isSaving}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
                     <Check className="w-4 h-4 mr-2" />
-                    Confirm {captureType === "check_in" ? "Check In" : "Check Out"}
+                    {isSaving ? "Saving..." : `Confirm ${captureType === "check_in" ? "Check In" : "Check Out"}`}
                   </Button>
                 </>
               )}
